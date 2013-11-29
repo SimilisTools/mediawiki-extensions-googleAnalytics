@@ -6,59 +6,58 @@ if ( !defined( 'MEDIAWIKI' ) ) {
 $wgExtensionCredits['other'][] = array(
 	'path'           => __FILE__,
 	'name'           => 'Google Analytics Integration',
-	'version'        => '2.0.2',
-	'author'         => 'Tim Laqua',
+	'version'        => '2.1',
+	'author'         => 'Tim Laqua, Toni Hermoso',
 	'descriptionmsg' => 'googleanalytics-desc',
-	'url'            => 'https://www.mediawiki.org/wiki/Extension:Google_Analytics_Integration',
+	'url'            => 'https://github.com/SimilisTools/mediawiki-extensions-googleAnalytics',
 );
 
 $wgExtensionMessagesFiles['googleAnalytics'] = dirname(__FILE__) . '/googleAnalytics.i18n.php';
 
-$wgHooks['SkinAfterBottomScripts'][]  = 'efGoogleAnalyticsHookText';
-$wgHooks['ParserAfterTidy'][] = 'efGoogleAnalyticsASAC';
+$wgHooks['ParserBeforeTidy'][] = 'wgAddGoogleAnalytics';
 
 $wgGoogleAnalyticsAccount = "";
 $wgGoogleAnalyticsSubDomain = "";
-$wgGoogleAnalyticsAddASAC = false;
 $wgGoogleAnalyticsIgnoreSysops = true;
 $wgGoogleAnalyticsIgnoreBots = true;
 
-function efGoogleAnalyticsASAC( &$parser, &$text ) {
-	global $wgOut, $wgGoogleAnalyticsAccount, $wgGoogleAnalyticsAddASAC;
 
-	if( !empty($wgGoogleAnalyticsAccount) && $wgGoogleAnalyticsAddASAC ) {
-		$wgOut->addScript('<script type="text/javascript">window.google_analytics_uacct = "' . $wgGoogleAnalyticsAccount . '";</script>');
-	}
+function wgAddGoogleAnalytics( &$parser, &$text ) {
 
-	return true;
-}
-
-function efGoogleAnalyticsHookText( $skin, &$text='' ) {
-	$text .= efAddGoogleAnalytics();
-	return true;
-}
-
-function efAddGoogleAnalytics() {
-	global $wgGoogleAnalyticsAccount, $wgGoogleAnalyticsIgnoreSysops, $wgGoogleAnalyticsIgnoreBots, $wgGoogleAnalyticsSubDomain, $wgUser;
-	if ( $wgUser->isAllowed( 'bot' ) && $wgGoogleAnalyticsIgnoreBots ) {
+	global $wgGoogleAnalyticsAccount, $wgGoogleAnalyticsIgnoreSysops, $wgGoogleAnalyticsIgnoreBots, $wgGoogleAnalyticsSubDomain;
+	
+	// Let's get user
+	$user = $parser->getUser();
+	
+	if ( $user->isAllowed( 'bot' ) && $wgGoogleAnalyticsIgnoreBots ) {
 		return "\n<!-- Google Analytics tracking is disabled for bots -->";
 	}
 
-	if ( $wgUser->isAllowed( 'protect' ) && $wgGoogleAnalyticsIgnoreSysops ) {
+	if ( $user->isAllowed( 'protect' ) && $wgGoogleAnalyticsIgnoreSysops ) {
 		return "\n<!-- Google Analytics tracking is disabled for users with 'protect' rights (I.E. sysops) -->";
 	}
 
+	// Account
+	$gaAccount = "";
 	if ( $wgGoogleAnalyticsAccount === '' ) {
 		return "\n<!-- Set \$wgGoogleAnalyticsAccount to your account # provided by Google Analytics. -->";
+	} else {
+		 $gaAccount = "_gaq.push(['_setAccount', '".$wgGoogleAnalyticsAccount."']);";
 	}
-
-	return <<<HTML
+	
+	// Let's put info of DomainName
+	$domainName = "";
+	if ( $wgGoogleAnalyticsSubDomain  !== '' ) {
+		$domainName = "_gaq.push(['_setDomainName', '".$wgGoogleAnalyticsSubDomain."']);";
+	}
+	
+	$code =<<<HTML
 <script type="text/javascript">
  var _gaq = _gaq || [];
  var pluginUrl = '//www.google-analytics.com/plugins/ga/inpage_linkid.js';
- _gaq.push(['_setAccount', '{$wgGoogleAnalyticsAccount}']);
+ {$gaAccount}
  _gaq.push(['_require', 'inpage_linkid', pluginUrl]);
- _gaq.push(['_setDomainName', '{$wgGoogleAnalyticsSubDomain}']);
+ {$domainName}
  _gaq.push(['_setAllowLinker', true]);
  _gaq.push(['_setAllowHash', false]);
  _gaq.push(['_trackPageview']);
@@ -69,7 +68,11 @@ function efAddGoogleAnalytics() {
  })();
  </script> 
 HTML;
+
+	
+  $parser->mOutput->addHeadItem( $code );
+  return true;
+  
 }
 
-///Alias for efAddGoogleAnalytics - backwards compatibility.
-function addGoogleAnalytics() { return efAddGoogleAnalytics(); }
+
