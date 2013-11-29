@@ -18,12 +18,8 @@ $wgHooks['SkinAfterBottomScripts'][]  = 'efGoogleAnalyticsHookText';
 $wgHooks['ParserAfterTidy'][] = 'efGoogleAnalyticsASAC';
 
 $wgGoogleAnalyticsAccount = "";
+$wgGoogleAnalyticsSubDomain = "";
 $wgGoogleAnalyticsAddASAC = false;
-
-
-// These options are deprecated.
-// You should add the "noanalytics" right to the group
-// Ex: $wgGroupPermissions["sysop"]["noanalytics"] = true;
 $wgGoogleAnalyticsIgnoreSysops = true;
 $wgGoogleAnalyticsIgnoreBots = true;
 
@@ -43,11 +39,13 @@ function efGoogleAnalyticsHookText( $skin, &$text='' ) {
 }
 
 function efAddGoogleAnalytics() {
-	global $wgGoogleAnalyticsAccount, $wgGoogleAnalyticsIgnoreSysops, $wgGoogleAnalyticsIgnoreBots, $wgUser;
-	if ( $wgUser->isAllowed( 'noanalytics' ) ||
-		 $wgGoogleAnalyticsIgnoreBots && $wgUser->isAllowed( 'bot' ) ||
-		 $wgGoogleAnalyticsIgnoreSysops && $wgUser->isAllowed( 'protect' ) ) {
-		return "\n<!-- Google Analytics tracking is disabled for this user -->";
+	global $wgGoogleAnalyticsAccount, $wgGoogleAnalyticsIgnoreSysops, $wgGoogleAnalyticsIgnoreBots, $wgGoogleAnalyticsSubDomain, $wgUser;
+	if ( $wgUser->isAllowed( 'bot' ) && $wgGoogleAnalyticsIgnoreBots ) {
+		return "\n<!-- Google Analytics tracking is disabled for bots -->";
+	}
+
+	if ( $wgUser->isAllowed( 'protect' ) && $wgGoogleAnalyticsIgnoreSysops ) {
+		return "\n<!-- Google Analytics tracking is disabled for users with 'protect' rights (I.E. sysops) -->";
 	}
 
 	if ( $wgGoogleAnalyticsAccount === '' ) {
@@ -56,15 +54,20 @@ function efAddGoogleAnalytics() {
 
 	return <<<HTML
 <script type="text/javascript">
-var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
-document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
-</script>
-<script type="text/javascript">
-try {
-var pageTracker = _gat._getTracker("{$wgGoogleAnalyticsAccount}");
-pageTracker._trackPageview();
-} catch(err) {}
-</script>
+ var _gaq = _gaq || [];
+ var pluginUrl = '//www.google-analytics.com/plugins/ga/inpage_linkid.js';
+ _gaq.push(['_setAccount', '{$wgGoogleAnalyticsAccount}']);
+ _gaq.push(['_require', 'inpage_linkid', pluginUrl]);
+ _gaq.push(['_setDomainName', '{$wgGoogleAnalyticsSubDomain}']);
+ _gaq.push(['_setAllowLinker', true]);
+ _gaq.push(['_setAllowHash', false]);
+ _gaq.push(['_trackPageview']);
+ (function() {
+ var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+ ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+ var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+ })();
+ </script> 
 HTML;
 }
 
