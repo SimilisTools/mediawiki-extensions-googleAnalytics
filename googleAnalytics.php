@@ -29,29 +29,38 @@ function wgAddGoogleAnalytics( &$parser, &$text ) {
 	// Let's get user
 	$user = $parser->getUser();
 	
+	//Output code
+	$code = "";
+	// Whether skip the code
+	$skip = false;
+	
 	if ( $user->isAllowed( 'bot' ) && $wgGoogleAnalyticsIgnoreBots ) {
-		return "\n<!-- Google Analytics tracking is disabled for bots -->";
+		$code = "\n<!-- Google Analytics tracking is disabled for bots -->";
+		$skip = true;
 	}
 
 	if ( $user->isAllowed( 'protect' ) && $wgGoogleAnalyticsIgnoreSysops ) {
-		return "\n<!-- Google Analytics tracking is disabled for users with 'protect' rights (I.E. sysops) -->";
+		$code = "\n<!-- Google Analytics tracking is disabled for users with 'protect' rights (I.E. sysops) -->";
+		$skip = true;
 	}
 
-	// Account
-	$gaAccount = "";
-	if ( $wgGoogleAnalyticsAccount === '' ) {
-		return "\n<!-- Set \$wgGoogleAnalyticsAccount to your account # provided by Google Analytics. -->";
-	} else {
-		 $gaAccount = "_gaq.push(['_setAccount', '".$wgGoogleAnalyticsAccount."']);";
-	}
-	
 	// Let's put info of DomainName
 	$domainName = "";
 	if ( $wgGoogleAnalyticsSubDomain  !== '' ) {
 		$domainName = "_gaq.push(['_setDomainName', '".$wgGoogleAnalyticsSubDomain."']);";
 	}
+
+	// Account
+	$gaAccount = "";
 	
-	$code =<<<HTML
+	if ( $wgGoogleAnalyticsAccount === '' ) {
+		$code = "\n<!-- Set \$wgGoogleAnalyticsAccount to your account # provided by Google Analytics. -->";
+	} else {
+		
+		if ( !$skip ) {
+			$gaAccount = "_gaq.push(['_setAccount', '".$wgGoogleAnalyticsAccount."']);";
+
+			$code =<<<HTML
 <script type="text/javascript">
  var _gaq = _gaq || [];
  var pluginUrl = '//www.google-analytics.com/plugins/ga/inpage_linkid.js';
@@ -62,17 +71,19 @@ function wgAddGoogleAnalytics( &$parser, &$text ) {
  _gaq.push(['_setAllowHash', false]);
  _gaq.push(['_trackPageview']);
  (function() {
- var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
- ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
- var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+ 	var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+ 	ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+ 	var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
  })();
- </script> 
+</script> 
 HTML;
-
+		
+		}
+	}
 	
-  $parser->mOutput->addHeadItem( $code );
-  return true;
-  
+	$parser->mOutput->addHeadItem( $code );
+	return true;
+
 }
 
 
