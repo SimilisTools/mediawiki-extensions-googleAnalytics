@@ -96,7 +96,7 @@ _gaq.push(['_setAllowHash', false]);";
 		}
 	} else {
 		if ( $wgGoogleAnalyticsUniversal ) {
-			$subDomain = "auto";
+			$subDomain = "'auto'";
 		}
 	}
 
