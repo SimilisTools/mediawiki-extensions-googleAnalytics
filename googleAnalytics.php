@@ -6,84 +6,126 @@ if ( !defined( 'MEDIAWIKI' ) ) {
 $wgExtensionCredits['other'][] = array(
 	'path'           => __FILE__,
 	'name'           => 'Google Analytics Integration',
-	'version'        => '2.1',
+	'version'        => '2.2.0',
 	'author'         => 'Tim Laqua, Toni Hermoso',
 	'descriptionmsg' => 'googleanalytics-desc',
-	'url'            => 'https://github.com/SimilisTools/mediawiki-extensions-googleAnalytics',
+	'url'            => 'https://www.mediawiki.org/wiki/Extension:Google_Analytics_Integration',
 );
 
+$wgMessagesDirs['googleAnalytics'] = __DIR__ . '/i18n';
 $wgExtensionMessagesFiles['googleAnalytics'] = dirname(__FILE__) . '/googleAnalytics.i18n.php';
 
-$wgHooks['ParserBeforeTidy'][] = 'wgAddGoogleAnalytics';
+$wgHooks['SkinAfterBottomScripts'][]  = 'efGoogleAnalyticsHookText';
+$wgHooks['ParserAfterTidy'][] = 'efGoogleAnalyticsASAC';
 
 $wgGoogleAnalyticsAccount = "";
-$wgGoogleAnalyticsSubDomain = "";
+$wgGoogleAnalyticsAddASAC = false;
+
+// https://support.google.com/analytics/answer/2558867?hl=en
+$wgGoogleAnalyticsLinkAttr = true;
+
+$wgGoogleAnalyticsSetDomain = "";
+
+// New Universal: https://developers.google.com/analytics/devguides/collection/upgrade/reference/gajs-analyticsjs
+$wgGoogleAnalyticsUniversal = true;
+
+// These options are deprecated.
+// You should add the "noanalytics" right to the group
+// Ex: $wgGroupPermissions["sysop"]["noanalytics"] = true;
+// Default not analytics for sysops
+$wgGroupPermissions["sysop"]["noanalytics"] = true;
 $wgGoogleAnalyticsIgnoreSysops = true;
 $wgGoogleAnalyticsIgnoreBots = true;
 
+function efGoogleAnalyticsASAC( &$parser, &$text ) {
+	global $wgOut, $wgGoogleAnalyticsAccount, $wgGoogleAnalyticsAddASAC;
 
-function wgAddGoogleAnalytics( &$parser, &$text ) {
-
-	global $wgGoogleAnalyticsAccount, $wgGoogleAnalyticsIgnoreSysops, $wgGoogleAnalyticsIgnoreBots, $wgGoogleAnalyticsSubDomain;
-	
-	// Let's get user
-	$user = $parser->getUser();
-	
-	//Output code
-	$code = "";
-	// Whether skip the code
-	$skip = false;
-	
-	if ( $user->isAllowed( 'bot' ) && $wgGoogleAnalyticsIgnoreBots ) {
-		$code = "\n<!-- Google Analytics tracking is disabled for bots -->";
-		$skip = true;
+	if( !empty($wgGoogleAnalyticsAccount) && $wgGoogleAnalyticsAddASAC ) {
+		$wgOut->addScript('<script type="text/javascript">window.google_analytics_uacct = "' . $wgGoogleAnalyticsAccount . '";</script>');
 	}
 
-	if ( $user->isAllowed( 'protect' ) && $wgGoogleAnalyticsIgnoreSysops ) {
-		$code = "\n<!-- Google Analytics tracking is disabled for users with 'protect' rights (I.E. sysops) -->";
-		$skip = true;
-	}
+	return true;
+}
 
-	// Let's put info of DomainName
-	$domainName = "";
-	if ( $wgGoogleAnalyticsSubDomain  !== '' ) {
-		$domainName = "_gaq.push(['_setDomainName', '".$wgGoogleAnalyticsSubDomain."']);";
-	}
+function efGoogleAnalyticsHookText( $skin, &$text='' ) {
+	$text .= efAddGoogleAnalytics();
+	return true;
+}
 
-	// Account
-	$gaAccount = "";
+function efAddGoogleAnalytics() {
+	global $wgGoogleAnalyticsAccount;
+	global $wgGoogleAnalyticsIgnoreSysops, $wgGoogleAnalyticsIgnoreBots;
+	global $wgGoogleAnalyticsUniversal, $wgGoogleAnalyticsLinkAttr, $wgGoogleAnalyticsSetDomain;
+	global $wgUser;
 	
+	if ( $wgUser->isAllowed( 'noanalytics' ) ||
+		 $wgGoogleAnalyticsIgnoreBots && $wgUser->isAllowed( 'bot' ) ||
+		 $wgGoogleAnalyticsIgnoreSysops && $wgUser->isAllowed( 'protect' ) ) {
+		return "\n<!-- Google Analytics tracking is disabled for this user -->";
+	}
+
 	if ( $wgGoogleAnalyticsAccount === '' ) {
-		$code = "\n<!-- Set \$wgGoogleAnalyticsAccount to your account # provided by Google Analytics. -->";
-	} else {
-		
-		if ( !$skip ) {
-			$gaAccount = "_gaq.push(['_setAccount', '".$wgGoogleAnalyticsAccount."']);";
-
-			$code =<<<HTML
-<script type="text/javascript">
- var _gaq = _gaq || [];
- var pluginUrl = '//www.google-analytics.com/plugins/ga/inpage_linkid.js';
- {$gaAccount}
- _gaq.push(['_require', 'inpage_linkid', pluginUrl]);
- {$domainName}
- _gaq.push(['_setAllowLinker', true]);
- _gaq.push(['_setAllowHash', false]);
- _gaq.push(['_trackPageview']);
- (function() {
- 	var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
- 	ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
- 	var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
- })();
-</script> 
-HTML;
-		
+		return "\n<!-- Set \$wgGoogleAnalyticsAccount to your account # provided by Google Analytics. -->";
+	}
+	
+	
+	$linkAttr = "";
+	if ( $wgGoogleAnalyticsLinkAttr ) {
+		if ( $wgGoogleAnalyticsUniversal ) {
+			$linkAttr = "ga('require', 'linkid', 'linkid.js');";
+		} else {
+			$linkAttr = "var pluginUrl = '//www.google-analytics.com/plugins/ga/inpage_linkid.js';
+_gaq.push(['_require', 'inpage_linkid', pluginUrl]);";
 		}
 	}
 	
-	$parser->mOutput->addHeadItem( $code );
-	return true;
+	$subDomain = "";
+	if ( !empty( $wgGoogleAnalyticsSetDomain ) ) {
+		if ( $wgGoogleAnalyticsUniversal ) {
+			$subDomain = "{'cookieDomain': '".$wgGoogleAnalyticsSetDomain."'}";
+		} else {
+			$subDomain = "_gaq.push(['_setDomainName', '".$wgGoogleAnalyticsSetDomain."']);
+_gaq.push(['_setAllowLinker', true]);
+_gaq.push(['_setAllowHash', false]);";
+		}
+	} else {
+		if ( $wgGoogleAnalyticsUniversal ) {
+			$subDomain = "auto";
+		}
+	}
 
+	if ( $wgGoogleAnalyticsUniversal ) {
+	return <<<HTML
+<script>
+(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+})(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+ga('create', '{$wgGoogleAnalyticsAccount}', {$subDomain});
+{$linkAttr}
+ga('send', 'pageview');
+
+</script>
+HTML;
+	} else {
+
+	return <<<HTML
+<script type="text/javascript">
+var _gaq = _gaq || [];
+var _gaq.push(['_setAccount', '{$wgGoogleAnalyticsAccount}']);
+{$linkAttr}
+{$subDomain}
+_gaq.push(['_trackPageview']);
+(function() {
+	var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+	ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+	var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+})();
+</script>
+HTML;
+	}
 }
 
-
+///Alias for efAddGoogleAnalytics - backwards compatibility.
+function addGoogleAnalytics() { return efAddGoogleAnalytics(); }
