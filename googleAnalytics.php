@@ -3,39 +3,45 @@ if ( !defined( 'MEDIAWIKI' ) ) {
 	die( 'This file is a MediaWiki extension, it is not a valid entry point' );
 }
 
-$wgExtensionCredits['other'][] = array(
-	'path'           => __FILE__,
-	'name'           => 'Google Analytics Integration',
-	'version'        => '2.2.0',
-	'author'         => 'Tim Laqua, Toni Hermoso',
-	'descriptionmsg' => 'googleanalytics-desc',
-	'url'            => 'https://www.mediawiki.org/wiki/Extension:Google_Analytics_Integration',
-);
+//self executing anonymous function to prevent global scope assumptions
+call_user_func( function() {
 
-$wgMessagesDirs['googleAnalytics'] = __DIR__ . '/i18n';
-$wgExtensionMessagesFiles['googleAnalytics'] = dirname(__FILE__) . '/googleAnalytics.i18n.php';
+	$GLOBALS['wgExtensionCredits']['other'][] = array(
+		'path'           => __FILE__,
+		'name'           => 'Google Analytics Integration',
+		'version'        => '2.2.0',
+		'author'         => 'Tim Laqua, Toni Hermoso',
+		'descriptionmsg' => 'googleanalytics-desc',
+		'url'            => 'https://www.mediawiki.org/wiki/Extension:Google_Analytics_Integration',
+	);
 
-$wgHooks['SkinAfterBottomScripts'][]  = 'efGoogleAnalyticsHookText';
-$wgHooks['ParserAfterTidy'][] = 'efGoogleAnalyticsASAC';
+	$GLOBALS['wgMessagesDirs']['googleAnalytics'] = __DIR__ . '/i18n';
+	$GLOBALS['wgExtensionMessagesFiles']['googleAnalytics'] = dirname(__FILE__) . '/googleAnalytics.i18n.php';
 
-$wgGoogleAnalyticsAccount = "";
-$wgGoogleAnalyticsAddASAC = false;
+	$GLOBALS['wgHooks']['SkinAfterBottomScripts'][]  = 'efGoogleAnalyticsHookText';
+	$GLOBALS['wgHooks']['ParserAfterTidy'][] = 'efGoogleAnalyticsASAC';
 
-// https://support.google.com/analytics/answer/2558867?hl=en
-$wgGoogleAnalyticsLinkAttr = true;
+	$GLOBALS['wgGoogleAnalyticsAccount'] = "";
+	$GLOBALS['wgGoogleAnalyticsAddASAC'] = false;
 
-$wgGoogleAnalyticsSetDomain = "";
+	// https://support.google.com/analytics/answer/2558867?hl=en
+	$GLOBALS['wgGoogleAnalyticsLinkAttr'] = true;
 
-// New Universal: https://developers.google.com/analytics/devguides/collection/upgrade/reference/gajs-analyticsjs
-$wgGoogleAnalyticsUniversal = true;
+	// https://developers.google.com/analytics/devguides/collection/gajs/gaTrackingSite
+	$GLOBALS['wgGoogleAnalyticsSetDomain'] = "";
 
-// These options are deprecated.
-// You should add the "noanalytics" right to the group
-// Ex: $wgGroupPermissions["sysop"]["noanalytics"] = true;
-// Default not analytics for sysops
-$wgGroupPermissions["sysop"]["noanalytics"] = true;
-$wgGoogleAnalyticsIgnoreSysops = true;
-$wgGoogleAnalyticsIgnoreBots = true;
+	// New Universal: https://developers.google.com/analytics/devguides/collection/upgrade/reference/gajs-analyticsjs
+	$GLOBALS['wgGoogleAnalyticsUniversal'] = true;
+
+	// These options are deprecated.
+	// You should add the "noanalytics" right to the group
+	// Ex: $wgGroupPermissions["sysop"]["noanalytics"] = true;
+	// Default not analytics for sysops
+	$GLOBALS['wgGroupPermissions']["sysop"]["noanalytics"] = true;
+	$GLOBALS['wgGoogleAnalyticsIgnoreSysops'] = true;
+	$GLOBALS['wgGoogleAnalyticsIgnoreBots'] = true;
+
+});
 
 function efGoogleAnalyticsASAC( &$parser, &$text ) {
 	global $wgOut, $wgGoogleAnalyticsAccount, $wgGoogleAnalyticsAddASAC;
