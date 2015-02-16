@@ -119,7 +119,7 @@ HTML;
 	return <<<HTML
 <script type="text/javascript">
 var _gaq = _gaq || [];
-var _gaq.push(['_setAccount', '{$wgGoogleAnalyticsAccount}']);
+_gaq.push(['_setAccount', '{$wgGoogleAnalyticsAccount}']);
 {$linkAttr}
 {$subDomain}
 _gaq.push(['_trackPageview']);
